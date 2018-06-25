@@ -836,6 +836,13 @@ md_ctx_final(mbedtls_md_context_t *ctx, uint8_t *dst)
 /*
  * TODO: re-enable dmsg for crypto debug
  */
+int
+hmac_key_size(const md_info_t *kt)
+{
+    if (NULL == kt)
+         return 0;
+    return md_get_size(kt);
+}
 
 mbedtls_md_context_t *
 hmac_ctx_new(void)

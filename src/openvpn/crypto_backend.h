@@ -590,6 +590,15 @@ hmac_ctx_t *hmac_ctx_new(void);
 void hmac_ctx_free(hmac_ctx_t *ctx);
 
 /*
+ * Returns the size of the HMAC key by the given message digest.
+ *
+ * @param ctx           Message digest context. May not be NULL.
+ *
+ * @return              Size of the HMAC key in bytes.
+ */
+int hmac_key_size(const md_kt_t *ctx);
+
+/*
  * Initialises the given HMAC context, using the given digest
  * and key.
  *

@@ -143,6 +143,7 @@ struct key_type
 {
     uint8_t cipher_length;      /**< Cipher length, in bytes */
     uint8_t hmac_length;        /**< HMAC length, in bytes */
+    uint8_t hmac_key_length;    /**< HMAC key length, in bytes */
     const cipher_kt_t *cipher;  /**< Cipher static parameters */
     const md_kt_t *digest;      /**< Message digest static parameters */
 };

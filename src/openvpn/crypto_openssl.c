@@ -806,6 +806,13 @@ cipher_des_encrypt_ecb(const unsigned char key[DES_KEY_LENGTH],
  *
  */
 
+int
+hmac_key_size(const EVP_MD *kt)
+{
+    if (NULL == kt)
+        return 0;
+    return md_kt_size(kt);
+}
 
 const EVP_MD *
 md_kt_get(const char *digest)

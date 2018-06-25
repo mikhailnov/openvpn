@@ -820,6 +820,7 @@ init_key_type(struct key_type *kt, const char *ciphername,
         {
             kt->digest = md_kt_get(authname);
             kt->hmac_length = md_kt_size(kt->digest);
+            kt->hmac_key_length = hmac_key_size(kt->digest);
 
             if (OPENVPN_MAX_HMAC_SIZE < kt->hmac_length)
             {
@@ -873,17 +874,17 @@ init_key_ctx(struct key_ctx *ctx, const struct key *key,
                 cipher_kt_block_size(kt->cipher)*8);
         }
     }
-    if (kt->digest && kt->hmac_length > 0)
+    if (kt->digest && kt->hmac_key_length > 0)
     {
         ctx->hmac = hmac_ctx_new();
-        hmac_ctx_init(ctx->hmac, key->hmac, kt->hmac_length, kt->digest);
+        hmac_ctx_init(ctx->hmac, key->hmac, kt->hmac_key_length, kt->digest);
 
         msg(D_HANDSHAKE,
             "%s: Using %d bit message hash '%s' for HMAC authentication",
             prefix, md_kt_size(kt->digest) * 8, md_kt_name(kt->digest));
 
         dmsg(D_SHOW_KEYS, "%s: HMAC KEY: %s", prefix,
-             format_hex(key->hmac, kt->hmac_length, 0, &gc));
+             format_hex(key->hmac, kt->hmac_key_length, 0, &gc));
 
         dmsg(D_CRYPTO_DEBUG, "%s: HMAC size=%d block_size=%d",
              prefix,
@@ -1045,7 +1046,7 @@ void
 generate_key_random(struct key *key, const struct key_type *kt)
 {
     int cipher_len = MAX_CIPHER_KEY_LENGTH;
-    int hmac_len = MAX_HMAC_KEY_LENGTH;
+    int hmac_key_len = MAX_HMAC_KEY_LENGTH;
 
     struct gc_arena gc = gc_new();
 
@@ -1059,19 +1060,19 @@ generate_key_random(struct key *key, const struct key_type *kt)
                 cipher_len = kt->cipher_length;
             }
 
-            if (kt->digest && kt->hmac_length > 0 && kt->hmac_length <= hmac_len)
+            if (kt->digest && kt->hmac_key_length > 0 && kt->hmac_key_length <= hmac_key_len)
             {
-                hmac_len = kt->hmac_length;
+                hmac_key_len = kt->hmac_key_length;
             }
         }
         if (!rand_bytes(key->cipher, cipher_len)
-            || !rand_bytes(key->hmac, hmac_len))
+            || !rand_bytes(key->hmac, hmac_key_len))
         {
             msg(M_FATAL, "ERROR: Random number generator cannot obtain entropy for key generation");
         }
 
         dmsg(D_SHOW_KEY_SOURCE, "Cipher source entropy: %s", format_hex(key->cipher, cipher_len, 0, &gc));
-        dmsg(D_SHOW_KEY_SOURCE, "HMAC source entropy: %s", format_hex(key->hmac, hmac_len, 0, &gc));
+        dmsg(D_SHOW_KEY_SOURCE, "HMAC source entropy: %s", format_hex(key->hmac, hmac_key_len, 0, &gc));
 
         if (kt)
         {
@@ -1098,13 +1099,13 @@ key2_print(const struct key2 *k,
          format_hex(k->keys[0].cipher, kt->cipher_length, 0, &gc));
     dmsg(D_SHOW_KEY_SOURCE, "%s (hmac): %s",
          prefix0,
-         format_hex(k->keys[0].hmac, kt->hmac_length, 0, &gc));
+         format_hex(k->keys[0].hmac, kt->hmac_key_length, 0, &gc));
     dmsg(D_SHOW_KEY_SOURCE, "%s (cipher): %s",
          prefix1,
          format_hex(k->keys[1].cipher, kt->cipher_length, 0, &gc));
     dmsg(D_SHOW_KEY_SOURCE, "%s (hmac): %s",
          prefix1,
-         format_hex(k->keys[1].hmac, kt->hmac_length, 0, &gc));
+         format_hex(k->keys[1].hmac, kt->hmac_key_length, 0, &gc));
     gc_free(&gc);
 }
 
@@ -1651,13 +1652,13 @@ write_key(const struct key *key, const struct key_type *kt,
           struct buffer *buf)
 {
     ASSERT(kt->cipher_length <= MAX_CIPHER_KEY_LENGTH
-           && kt->hmac_length <= MAX_HMAC_KEY_LENGTH);
+           && kt->hmac_key_length <= MAX_HMAC_KEY_LENGTH);
 
     if (!buf_write(buf, &kt->cipher_length, 1))
     {
         return false;
     }
-    if (!buf_write(buf, &kt->hmac_length, 1))
+    if (!buf_write(buf, &kt->hmac_key_length, 1))
     {
         return false;
     }
@@ -1665,7 +1666,7 @@ write_key(const struct key *key, const struct key_type *kt,
     {
         return false;
     }
-    if (!buf_write(buf, key->hmac, kt->hmac_length))
+    if (!buf_write(buf, key->hmac, kt->hmac_key_length))
     {
         return false;
     }
@@ -1683,19 +1684,19 @@ int
 read_key(struct key *key, const struct key_type *kt, struct buffer *buf)
 {
     uint8_t cipher_length;
-    uint8_t hmac_length;
+    uint8_t hmac_key_length;
 
     CLEAR(*key);
     if (!buf_read(buf, &cipher_length, 1))
     {
         goto read_err;
     }
-    if (!buf_read(buf, &hmac_length, 1))
+    if (!buf_read(buf, &hmac_key_length, 1))
     {
         goto read_err;
     }
 
-    if (cipher_length != kt->cipher_length || hmac_length != kt->hmac_length)
+    if (cipher_length != kt->cipher_length || hmac_key_length != kt->hmac_key_length)
     {
         goto key_len_err;
     }
@@ -1704,7 +1705,7 @@ read_key(struct key *key, const struct key_type *kt, struct buffer *buf)
     {
         goto read_err;
     }
-    if (!buf_read(buf, key->hmac, hmac_length))
+    if (!buf_read(buf, key->hmac, hmac_key_length))
     {
         goto read_err;
     }
@@ -1718,7 +1719,7 @@ read_err:
 key_len_err:
     msg(D_TLS_ERRORS,
         "TLS Error: key length mismatch, local cipher/hmac %d/%d, remote cipher/hmac %d/%d",
-        kt->cipher_length, kt->hmac_length, cipher_length, hmac_length);
+        kt->cipher_length, kt->hmac_key_length, cipher_length, hmac_key_length);
     return 0;
 }
 
