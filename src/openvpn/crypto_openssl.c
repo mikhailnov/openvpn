@@ -806,14 +806,6 @@ cipher_des_encrypt_ecb(const unsigned char key[DES_KEY_LENGTH],
  *
  */
 
-int
-hmac_key_size(const EVP_MD *kt)
-{
-    if (NULL == kt)
-        return 0;
-    return md_kt_size(kt);
-}
-
 const EVP_MD *
 md_kt_get(const char *digest)
 {
@@ -920,6 +912,78 @@ md_ctx_final(EVP_MD_CTX *ctx, uint8_t *dst)
  *
  */
 
+#if SSLEAY_VERSION_NUMBER >= 0x10000000L
+EVP_MD_CTX *
+hmac_ctx_new(void)
+{
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    check_malloc_return(ctx);
+    return ctx;
+}
+
+void
+hmac_ctx_free(EVP_MD_CTX *ctx)
+{
+    EVP_MD_CTX_free(ctx);
+}
+
+int
+hmac_key_size (const EVP_MD *kt)
+{
+  if (NULL == kt)
+    return 0;
+  return (EVP_MD_type (kt) == NID_id_Gost28147_89_MAC ? 32 : md_kt_size (kt));
+}
+
+void
+hmac_ctx_init (EVP_MD_CTX *ctx, const uint8_t *key, int key_len,
+    const EVP_MD *kt)
+{
+  int pkey_id;
+
+  ASSERT (NULL != kt && NULL != ctx);
+
+  pkey_id = ( EVP_MD_type (kt) == NID_id_Gost28147_89_MAC
+              ? NID_id_Gost28147_89_MAC : EVP_PKEY_HMAC );
+
+  EVP_MD_CTX_init (ctx);
+  EVP_DigestSignInit (ctx, NULL, kt, NULL,
+              EVP_PKEY_new_mac_key (pkey_id, NULL, (uint8_t *)key, key_len));
+}
+
+void
+hmac_ctx_cleanup (EVP_MD_CTX *ctx)
+{
+  /* frees the key implicitly */
+  EVP_MD_CTX_cleanup (ctx);
+}
+
+int
+hmac_ctx_size (const EVP_MD_CTX *ctx)
+{
+  return EVP_MD_CTX_size (ctx);
+}
+
+void
+hmac_ctx_reset (EVP_MD_CTX *ctx)
+{
+  EVP_DigestInit_ex (ctx, EVP_MD_CTX_md (ctx), NULL);
+}
+
+void
+hmac_ctx_update (EVP_MD_CTX *ctx, const uint8_t *src, int src_len)
+{
+  EVP_DigestSignUpdate (ctx, src, src_len);
+}
+
+void
+hmac_ctx_final (EVP_MD_CTX *ctx, uint8_t *dst)
+{
+  size_t mac_len = hmac_ctx_size (ctx);
+  EVP_DigestSignFinal (ctx, dst, &mac_len);
+}
+
+#else /* SSLEAY_VERSION_NUMBER >= 0x10000000L */
 HMAC_CTX *
 hmac_ctx_new(void)
 {
@@ -932,6 +996,14 @@ void
 hmac_ctx_free(HMAC_CTX *ctx)
 {
     HMAC_CTX_free(ctx);
+}
+
+int
+hmac_key_size(const EVP_MD *kt)
+{
+    if (NULL == kt)
+        return 0;
+    return md_kt_size(kt);
 }
 
 void
@@ -978,5 +1050,7 @@ hmac_ctx_final(HMAC_CTX *ctx, uint8_t *dst)
 
     HMAC_Final(ctx, dst, &in_hmac_len);
 }
+
+#endif /* SSLEAY_VERSION_NUMBER >= 0x10000000L */
 
 #endif /* ENABLE_CRYPTO && ENABLE_CRYPTO_OPENSSL */
