@@ -1747,6 +1747,32 @@ tls1_PRF(const uint8_t *label,
 }
 
 static void
+tls1_PRF_gost(uint8_t *label,
+              int label_len,
+              const uint8_t *sec,
+              int slen,
+              uint8_t *out1,
+              int olen)
+{
+    struct gc_arena gc = gc_new();
+    const md_kt_t *gost = md_kt_get("md_gost12_256");
+    int len;
+    const uint8_t *S1;
+
+    len=slen;
+    S1=sec;
+    len+=(slen&1); /* add for odd, make longer */
+
+    tls1_P_hash(gost ,S1,len,label,label_len,out1,olen);
+
+    dmsg(D_SHOW_KEY_SOURCE, "tls1_PRF out[%d]: %s", olen, format_hex (out1, olen, 0, &gc));
+
+    gc_free(&gc);
+}
+
+char use_gost_prf = -1;
+
+static void
 openvpn_PRF(const uint8_t *secret,
             int secret_len,
             const char *label,
@@ -1780,7 +1806,12 @@ openvpn_PRF(const uint8_t *secret,
     }
 
     /* compute PRF */
-    tls1_PRF(BPTR(&seed), BLEN(&seed), secret, secret_len, output, output_len);
+    if (use_gost_prf > 0)
+        tls1_PRF_gost (BPTR(&seed), BLEN(&seed),
+                       secret, secret_len, output, output_len);
+    else
+        tls1_PRF(BPTR(&seed), BLEN(&seed),
+                 secret, secret_len, output, output_len);
 
     buf_clear(&seed);
     free_buf(&seed);

@@ -474,6 +474,7 @@ struct options
     const char *shared_secret_file_inline;
     int key_direction;
     const char *ciphername;
+    char gost_prf;
     bool ncp_enabled;
     const char *ncp_ciphers;
     const char *authname;

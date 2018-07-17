@@ -617,4 +617,9 @@ show_available_tls_ciphers(const char *cipher_list,
                            const char *tls_cert_profile);
 #endif /* ENABLE_CRYPTO */
 
+extern char use_gost_prf;
+
+#define gost_cipher(x) (strstr((x)->ciphername, "gost"))
+#define gost_auth(x) (strstr((x)->authname, "gost"))
+
 #endif /* ifndef OPENVPN_SSL_H */
