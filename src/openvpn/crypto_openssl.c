@@ -930,21 +930,27 @@ hmac_ctx_free(EVP_MD_CTX *ctx)
 int
 hmac_key_size (const EVP_MD *kt)
 {
+  int md_type;
+
   if (NULL == kt)
     return 0;
-  return (EVP_MD_type (kt) == NID_id_Gost28147_89_MAC ? 32 : md_kt_size (kt));
+
+  md_type = EVP_MD_type(kt);
+  return md_type == NID_id_Gost28147_89_MAC ||
+         md_type == NID_gost_hmac_12 ? 32 : md_kt_size(kt);
 }
 
 void
 hmac_ctx_init (EVP_MD_CTX *ctx, const uint8_t *key, int key_len,
     const EVP_MD *kt)
 {
-  int pkey_id;
+  int pkey_id, md_type;
 
   ASSERT (NULL != kt && NULL != ctx);
 
-  pkey_id = ( EVP_MD_type (kt) == NID_id_Gost28147_89_MAC
-              ? NID_id_Gost28147_89_MAC : EVP_PKEY_HMAC );
+  md_type = EVP_MD_type(kt);
+  pkey_id = md_type == NID_id_Gost28147_89_MAC ||
+            md_type == NID_gost_hmac_12 ? md_type : EVP_PKEY_HMAC;
 
   EVP_MD_CTX_init (ctx);
   EVP_DigestSignInit (ctx, NULL, kt, NULL,
