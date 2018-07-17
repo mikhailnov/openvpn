@@ -3031,10 +3031,18 @@ options_postprocess_mutate(struct options *o)
 #ifdef ENABLE_CRYPTO
     if (o->tls_server)
     {
-        /* Check that DH file is specified, or explicitly disabled */
-        notnull(o->dh_file, "DH file (--dh)");
-        if (streq(o->dh_file, "none"))
+        if (!gost_cipher(o))
         {
+            /* Check that DH file is specified, or explicitly disabled */
+            notnull(o->dh_file, "DH file (--dh)");
+            if (streq(o->dh_file, "none"))
+            {
+                o->dh_file = NULL;
+            }
+        }
+        else if (o->dh_file)
+        {
+            msg(M_WARN, "WARNING: Ignoring option 'dh' with GOST ciphers");
             o->dh_file = NULL;
         }
     }
