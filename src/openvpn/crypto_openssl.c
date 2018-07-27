@@ -590,6 +590,13 @@ cipher_kt_block_size(const EVP_CIPHER *cipher)
     strcpy(mode_str, "-CBC");
 
     cbc_cipher = EVP_get_cipherbyname(translate_cipher_name_from_openvpn(name));
+    if (!cbc_cipher)
+    {
+        /* check for GOST ciphers */
+        strcpy(mode_str, "-cbc");
+        cbc_cipher = EVP_get_cipherbyname(translate_cipher_name_from_openvpn(name));
+    }
+
     if (cbc_cipher)
     {
         block_size = EVP_CIPHER_block_size(cbc_cipher);
