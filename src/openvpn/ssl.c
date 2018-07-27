@@ -1992,9 +1992,8 @@ tls_session_generate_data_channel_keys(struct tls_session *session)
         msg(D_TLS_ERRORS, "TLS Error: generate_key_expansion failed");
         goto cleanup;
     }
-    if (!strstr(cipher_kt_name(session->opt->key_type.cipher), "gost"))
-        tls_limit_reneg_bytes(session->opt->key_type.cipher,
-                              &session->opt->renegotiate_bytes);
+    tls_limit_reneg_bytes(session->opt->key_type.cipher,
+                          &session->opt->renegotiate_bytes);
 
     ret = true;
 cleanup:
