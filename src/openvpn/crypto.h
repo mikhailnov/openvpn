@@ -520,6 +520,10 @@ key_ctx_bi_defined(const struct key_ctx_bi *key)
     return key->encrypt.cipher || key->encrypt.hmac || key->decrypt.cipher || key->decrypt.hmac;
 }
 
-
+static inline bool
+is_gost_name(const char *name)
+{
+    return name && (strstr(name, "gost") || strstr(name, "grasshopper") || strstr(name, "magma"));
+}
 #endif /* ENABLE_CRYPTO */
 #endif /* CRYPTO_H */

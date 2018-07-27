@@ -1770,8 +1770,6 @@ tls1_PRF_gost(uint8_t *label,
     gc_free(&gc);
 }
 
-char use_gost_prf = -1;
-
 static void
 openvpn_PRF(const uint8_t *secret,
             int secret_len,
@@ -1783,7 +1781,8 @@ openvpn_PRF(const uint8_t *secret,
             const struct session_id *client_sid,
             const struct session_id *server_sid,
             uint8_t *output,
-            int output_len)
+            int output_len,
+            bool use_gost_prf)
 {
     /* concatenate seed components */
 
@@ -1806,7 +1805,7 @@ openvpn_PRF(const uint8_t *secret,
     }
 
     /* compute PRF */
-    if (use_gost_prf > 0)
+    if (use_gost_prf)
         tls1_PRF_gost (BPTR(&seed), BLEN(&seed),
                        secret, secret_len, output, output_len);
     else
@@ -1817,6 +1816,12 @@ openvpn_PRF(const uint8_t *secret,
     free_buf(&seed);
 
     VALGRIND_MAKE_READABLE((void *)output, output_len);
+}
+
+static bool use_gost_prf(const struct key_type *kt)
+{
+    return kt && (is_gost_name(md_kt_name(kt->digest))
+                  || is_gost_name(cipher_kt_name(kt->cipher)));
 }
 
 /*
@@ -1834,6 +1839,7 @@ generate_key_expansion(struct key_ctx_bi *key,
     uint8_t master[48] = { 0 };
     struct key2 key2 = { 0 };
     bool ret = false;
+    bool gost_prf;
 
     if (key->initialized)
     {
@@ -1843,6 +1849,8 @@ generate_key_expansion(struct key_ctx_bi *key,
 
     /* debugging print of source key material */
     key_source2_print(key_src);
+
+    gost_prf = use_gost_prf(key_type);
 
     /* compute master secret */
     openvpn_PRF(key_src->client.pre_master,
@@ -1855,7 +1863,8 @@ generate_key_expansion(struct key_ctx_bi *key,
                 NULL,
                 NULL,
                 master,
-                sizeof(master));
+                sizeof(master),
+                gost_prf);
 
     /* compute key expansion */
     openvpn_PRF(master,
@@ -1868,7 +1877,8 @@ generate_key_expansion(struct key_ctx_bi *key,
                 client_sid,
                 server_sid,
                 (uint8_t *)key2.keys,
-                sizeof(key2.keys));
+                sizeof(key2.keys),
+                gost_prf);
 
     key2.n = 2;
 

@@ -617,15 +617,4 @@ show_available_tls_ciphers(const char *cipher_list,
                            const char *tls_cert_profile);
 #endif /* ENABLE_CRYPTO */
 
-extern char use_gost_prf;
-
-static inline bool
-is_gost_name(const char *name)
-{
-	return strstr(name, "gost") || strstr(name, "grasshopper") || strstr(name, "magma");
-}
-
-#define gost_cipher(x) (is_gost_name((x)->ciphername))
-#define gost_auth(x) (is_gost_name((x)->authname))
-
 #endif /* ifndef OPENVPN_SSL_H */

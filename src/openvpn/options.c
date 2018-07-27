@@ -852,7 +852,6 @@ init_options(struct options *o, const bool init_gc)
 #endif
 #ifdef ENABLE_CRYPTO
     o->ciphername = "BF-CBC";
-    o->gost_prf = -1;
 #ifdef HAVE_AEAD_CIPHER_MODES /* IV_NCP=2 requires GCM support */
     o->ncp_enabled = true;
 #else
@@ -1658,7 +1657,6 @@ show_settings(const struct options *o)
     SHOW_STR(shared_secret_file);
     SHOW_PARM(key_direction, keydirection2ascii(o->key_direction, false, true), "%s");
     SHOW_STR(ciphername);
-    SHOW_INT(gost_prf);
     SHOW_BOOL(ncp_enabled);
     SHOW_STR(ncp_ciphers);
     SHOW_STR(authname);
@@ -2951,17 +2949,6 @@ options_postprocess_mutate_invariant(struct options *options)
         options->pkcs11_providers[0] = DEFAULT_PKCS11_MODULE;
     }
 #endif
-
-#ifdef ENABLE_CRYPTO
-    /* automatically enable gost_prf for gost ciphers */
-    if(gost_cipher(options) || gost_auth(options))
-    {
-        if (options->gost_prf == -1)
-            options->gost_prf = 1;
-    }
-    /* copy gost_prf flag to global variable */
-    use_gost_prf = options->gost_prf;
-#endif
 }
 
 static void
@@ -3031,7 +3018,7 @@ options_postprocess_mutate(struct options *o)
 #ifdef ENABLE_CRYPTO
     if (o->tls_server)
     {
-        if (!gost_cipher(o))
+        if (!is_gost_name(o->ciphername))
         {
             /* Check that DH file is specified, or explicitly disabled */
             notnull(o->dh_file, "DH file (--dh)");
